@@ -21,6 +21,8 @@ setup(
     entry_points={
         'console_scripts': [
             "move_gear = rokey.lecture_code.move_gear:main",
+            "move_block = rokey.lecture_code.move_block:main",
+            "stack_upgrade = rokey.lecture_code.stack_upgrade:main",
         ],
     },
 )
