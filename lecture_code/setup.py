@@ -20,9 +20,11 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            "move_gear = rokey.lecture_code.move_gear:main",
-            "move_block = rokey.lecture_code.move_block:main",
-            "stack_upgrade = rokey.lecture_code.stack_upgrade:main",
+            "move_gear = lecture_code.move_gear:main",
+            "move_block = lecture_code.move_block:main",
+            "stack_upgrade = lecture_code.stack_upgrade:main",
+            "task1 = lecture_code.task1:main",
+            
         ],
     },
 )
