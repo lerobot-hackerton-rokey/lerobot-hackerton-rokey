@@ -7,8 +7,8 @@ from sensor_msgs.msg import JointState
 from control_msgs.action import FollowJointTrajectory
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 
-# joint값 6개 입력 메시지 타입
-from std_msgs.msg import Float64MultiArray
+# # joint값 6개 입력 메시지 타입
+# from std_msgs.msg import Float64MultiArray
 
 # 만들어진 메시지
 from inference_interfaces.msg import ActionChunk
@@ -61,53 +61,55 @@ class TrajectoryCommander(Node):
         # 2. 현재 조인트 값 청크 수신
         # 3. 상대적 이동할 조인트 값 청크 + 현재 조인트 값으로 이동
     def joint_callback_chunck(self, msg: ActionChunk):
-        # if len(msg.data) != len(self.joint_names):
-        #     self.get_logger().error(f'❌ Expected {len(self.joint_names)} joint values, got {len(msg.data)}')
-        #     return
-
         # 현재 조인트 상태가 준비되었는지 확인
         if not self.joint_states_info:
             self.get_logger().warn('⚠️ Joint states not available yet.')
             return
 
-        # 현재값 + 델타 → 딕셔너리로 저장
-        joint_goal = {}
-        for i, name in enumerate(self.joint_names):
-            current = self.joint_states_info.get(name, 0.0) # ??
-            delta = msg.data[i]
-            joint_goal[name] = current + delta
-
-        self.get_logger().info(f'🎯 Joint goal: {joint_goal}')
-        self.send_trajectory_goal(joint_goal)
-
-    # 조인트 값 읽기
-    def joint_state_callback(self, msg):
-        # 조인트 상태 정보를 딕셔너리에 저장
-        self.joint_states_info = {name: position for name, position in zip(msg.name, msg.position)}
+        # self.get_logger().info(f'🎯 Joint goal: {joint_goal}')
+        # self.send_trajectory_goal(joint_goal)
+        traj_cmd = self.make_trajectory_(msg)
+        if traj_cmd is None:
+            self.get_logger().error('❌ Failed to create trajectory from ActionChunk message.')
+            return
+        else:    
+            self.send_trajectory_goal(traj_cmd)
         
-        # 확인
-        # self.get_logger().info('Updated joint states:')
-        # for name, pos in self.joint_states_info.items():
-        #     self.get_logger().info(f'  {name}: {pos:.3f}')
-
-    def send_trajectory_goal(self, joint_goal: dict):
-        # 딕셔너리에서 이름과 위치 분리
+    def make_trajectory_(self, msg: ActionChunk):
         joint_names = self.joint_names
-        target_positions = [joint_goal[name] for name in joint_names]
-
-        # 메시지 구성
-        point = JointTrajectoryPoint()
-        point.positions = target_positions
-        point.time_from_start.sec = 2
-
+        
+        if msg.rows != 10 or msg.cols != len(self.joint_names):
+            self.get_logger().error(f'❌ Expected 10 rows and {len(self.joint_names)} columns, got {msg.rows} rows and {msg.cols} columns')
+            return
+        
         trajectory = JointTrajectory()
         trajectory.joint_names = joint_names
-        trajectory.points.append(point)
+        
+        for row in range(msg.rows):
+            six_joint_goal = [] # 조인트 목표 값 저장
+            
+            for col in range(msg.cols):
+                current = self.joint_states_info.get(self.joint_names[col], 0.0) # ??
+                delta = msg.data[row * msg.cols + col] # 조인트 이동 값
+                
+                six_joint_goal.append(current + delta) # 조인트 목표 값 리스트
 
+            print("---- six_joint_goal ----")
+            print(six_joint_goal)
+            
+            point = JointTrajectoryPoint()
+            point.positions = six_joint_goal
+            point.time_from_start.sec = 2 * (row + 1)  # 2초 단위로 늘어나는 시간
+            
+            trajectory.points.append(point)
+        return trajectory
+    
+    # trajectory 목표 전송
+    def send_trajectory_goal(self, trajectory: JointTrajectory):
         goal_msg = FollowJointTrajectory.Goal()
         goal_msg.trajectory = trajectory
 
-        self.get_logger().info(f'🚀 Sending goal: {joint_goal}')
+        self.get_logger().info(f'🚀 Sending goal: {trajectory}')
         self._action_client.send_goal_async(goal_msg).add_done_callback(self.goal_response_callback)
     
     def goal_response_callback(self, future):
@@ -123,7 +125,16 @@ class TrajectoryCommander(Node):
         result = future.result().result
         self.get_logger().info('🎉 Trajectory execution complete!')
         rclpy.shutdown()
-
+    
+    # 조인트 값 읽기
+    def joint_state_callback(self, msg):
+        # 조인트 상태 정보를 딕셔너리에 저장
+        self.joint_states_info = {name: position for name, position in zip(msg.name, msg.position)}
+        
+        # 확인
+        # self.get_logger().info('Updated joint states:')
+        # for name, pos in self.joint_states_info.items():
+        #     self.get_logger().info(f'  {name}: {pos:.3f}')
 def main(args=None):
     rclpy.init(args=args)
     node = TrajectoryCommander()
@@ -131,34 +142,3 @@ def main(args=None):
 
 if __name__ == '__main__':
     main()
-
-
-# ============================아카이브============================
-# origin
-    # def send_trajectory_goal(self, joint_goal):
-    #     # 조인트 이름
-    #     joint_names = [
-    #         'panda_joint1', 'panda_joint2', 'panda_joint3', 'panda_joint4',
-    #         'panda_joint5', 'panda_joint6', 'panda_joint7'
-    #     ]
-
-    #     # 목표 위치 (예시: 약간 구부린 자세)
-    #     target_positions = [0.0, -0.5, 0.0, -2.0, 0.0, 2.0, 0.5]
-
-    #     # JointTrajectoryPoint 생성
-    #     point = JointTrajectoryPoint()
-    #     point.positions = target_positions
-    #     point.time_from_start.sec = 2  # 2초 안에 도달
-
-    #     # JointTrajectory 메시지 구성
-    #     trajectory = JointTrajectory()
-    #     trajectory.joint_names = joint_names
-    #     trajectory.points.append(point)
-
-    #     # 액션 목표 생성
-    #     goal_msg = FollowJointTrajectory.Goal()
-    #     goal_msg.trajectory = trajectory
-
-    #     # 액션 전송
-    #     self.get_logger().info('Sending trajectory goal...')
-    #     self._action_client.send_goal_async(goal_msg).add_done_callback(self.goal_response_callback)
