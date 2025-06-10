@@ -26,6 +26,7 @@ setup(
             'move_with_joint_command_6dof = hackathon.move_with_joint_command_6dof:main',
             'move_with_joint_command_7dof = hackathon.move_with_joint_command_7dof:main',
             'move_with_joint_command_6dof_chunck = hackathon.move_with_joint_command_6dof_chunck:main',
+            'pub_action_chunk = hackathon.pub_action_chunck:main',
         ],
     },
 )

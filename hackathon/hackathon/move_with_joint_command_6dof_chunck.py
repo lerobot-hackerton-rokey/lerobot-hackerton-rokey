@@ -99,7 +99,12 @@ class TrajectoryCommander(Node):
             
             point = JointTrajectoryPoint()
             point.positions = six_joint_goal
-            point.time_from_start.sec = 2 * (row + 1)  # 2초 단위로 늘어나는 시간
+            # point.time_from_start.sec = 2 * (row + 1)  # 2초 단위로 늘어나는 시간
+            
+            second_data = 200000000 * (row + 1)  # 0.2초 단위로 늘어나는 시간
+                       
+            point.time_from_start.sec = second_data // 1000000000  # 초 단위
+            point.time_from_start.nanosec = second_data % 1000000000  # 나노초 단위
             
             trajectory.points.append(point)
         return trajectory
@@ -124,7 +129,7 @@ class TrajectoryCommander(Node):
     def get_result_callback(self, future):
         result = future.result().result
         self.get_logger().info('🎉 Trajectory execution complete!')
-        rclpy.shutdown()
+        # rclpy.shutdown()
     
     # 조인트 값 읽기
     def joint_state_callback(self, msg):
